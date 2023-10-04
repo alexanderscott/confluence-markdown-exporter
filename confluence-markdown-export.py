@@ -1,4 +1,5 @@
 import os
+import sys
 import argparse
 from urllib.parse import urlparse, urlunparse
 
@@ -47,10 +48,10 @@ class Exporter:
         page = self.__confluence.get_page_by_id(src_id, expand="body.storage")
         page_title = page["title"]
         page_id = page["id"]
-    
+
         # see if there are any children
         child_ids = self.__confluence.get_child_id_list(page_id)
-    
+
         content = page["body"]["storage"]["value"]
 
         # save all files as .html for now, we will convert them later
@@ -106,7 +107,7 @@ class Exporter:
                         f.write(buf)
 
         self.__seen.add(page_id)
-    
+
         # recurse to process child nodes
         for child_id in child_ids:
             self.__dump_page(child_id, parents=sanitized_parents + [page_title])
@@ -123,7 +124,7 @@ class Exporter:
             homepage_id = space["homepage"]["id"]
             self.__dump_page(homepage_id, parents=[space_key])
 
-    
+
     def dump(self):
         ret = self.__confluence.get_all_spaces(start=0, limit=500, expand='description.plain,homepage')
         if ret['size'] == 0:
@@ -188,9 +189,9 @@ class Converter:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("url", type=str, help="The url to the confluence instance")
-    parser.add_argument("username", type=str, help="The username")
-    parser.add_argument("token", type=str, help="The access token to Confluence")
+    parser.add_argument("--url", type=str, required="--no-fetch" not in sys.argv, help="The url to the confluence instance")
+    parser.add_argument("--username", type=str, required="--no-fetch" not in sys.argv, help="The username")
+    parser.add_argument("--token", type=str, required="--no-fetch" not in sys.argv, help="The access token to Confluence")
     parser.add_argument("out_dir", type=str, help="The directory to output the files to")
     parser.add_argument("--space", type=str, required=False, default=None, help="Spaces to export")
     parser.add_argument("--skip-attachments", action="store_true", dest="no_attach", required=False,
@@ -198,11 +199,11 @@ if __name__ == "__main__":
     parser.add_argument("--no-fetch", action="store_true", dest="no_fetch", required=False,
                         default=False, help="This option only runs the markdown conversion")
     args = parser.parse_args()
-    
+
     if not args.no_fetch:
         dumper = Exporter(url=args.url, username=args.username, token=args.token, out_dir=args.out_dir,
                           space=args.space, no_attach=args.no_attach)
         dumper.dump()
-    
+
     converter = Converter(out_dir=args.out_dir)
     converter.convert()
